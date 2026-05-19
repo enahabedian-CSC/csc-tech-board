@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CSC Tech Work Board</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared/styles.css">
+</head>
+
+<script src="shared/config.js"></script>
+<script src="shared/api.js"></script>
+
+<body>
+
+<!-- SPLASH (TECH PICKER) -->
+<div id="splashScreen">
+  <div class="hdr">
+    <div class="hdr-logo">⚡</div>
+    <div>
+      <div class="hdr-title">CSC TECH BOARD</div>
+      <div class="hdr-sub">Maintenance — Garden Grove</div>
+    </div>
+  </div>
+  <div class="splash">
+    <div class="splash-title">TAP YOUR NAME</div>
+    <div class="splash-sub">to see your tickets</div>
+    <div class="tech-grid" id="techGrid">
+      <div class="loading">Loading technicians…</div>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN BOARD -->
+<div id="boardScreen" style="display:none">
+  <div class="hdr">
+    <div class="hdr-logo">⚡</div>
+    <div>
+      <div class="hdr-title">CSC TECH BOARD</div>
+      <div class="hdr-sub" id="hdrDate"></div>
+    </div>
+    <div class="hdr-tech">
+      <div class="tech-chip">
+        <div class="tech-chip-ini" id="techIni">—</div>
+        <span id="techNameDisplay">—</span>
+      </div>
+      <button class="btn-switch" onclick="switchTech()">SWITCH</button>
+    </div>
+  </div>
+
+  <div class="tab-bar">
+    <button class="tab active" data-tab="mine" onclick="switchTab('mine')">My Tickets <span class="tab-count" id="cntMine">0</span></button>
+    <button class="tab" data-tab="open" onclick="switchTab('open')">All Open <span class="tab-count" id="cntOpen">0</span></button>
+    <button class="tab" data-tab="pool" onclick="switchTab('pool')">Pool <span class="tab-count" id="cntPool">0</span></button>
+  </div>
+
+  <div class="body" id="bodyContent">
+    <div class="loading">Loading tickets…</div>
+  </div>
+
+  <button class="fab" onclick="loadData()" title="Refresh">🔄</button>
+</div>
+
+<script>
+var ALL_TICKETS = [];
+var TECH_LIST   = [];
+var SELECTED_TECH = '';
+var CURRENT_TAB = 'mine';
+
+window.onload = function() {
+  try { SELECTED_TECH = localStorage.getItem('csc_tech_name') || ''; } catch(e) {}
+  loadData();
+};
+
+async function loadData() {
+  try {
+    const d = await CSC_API.getBoard();
+    ALL_TICKETS = d.tickets || [];
+    var seen = {}, fromTickets = [];
+    ALL_TICKETS.forEach(function(t) {
+      if (t.assignedTo && !seen[t.assignedTo]) { seen[t.assignedTo] = true; fromTickets.push(t.assignedTo); }
+    });
+    TECH_LIST = (d.technicians && d.technicians.length) ? d.technicians : fromTickets;
+    if (SELECTED_TECH && TECH_LIST.indexOf(SELECTED_TECH) >= 0) {
+      showBoard();
+    } else {
+      showSplash();
+    }
+  } catch(e) {
+    document.getElementById('techGrid').innerHTML =
+      '<div class="empty"><div class="empty-ico">⚠️</div><div class="empty-msg">Connection Error</div><div class="empty-sub">' + escHtml(e.message) + '</div></div>';
+  }
+}
+
+function showSplash() {
+  document.getElementById('splashScreen').style.display = '';
+  document.getElementById('boardScreen').style.display = 'none';
+  var grid = document.getElementById('techGrid');
+  if (!TECH_LIST.length) {
+    grid.innerHTML = '<div class="empty"><div class="empty-ico">👷</div><div class="empty-msg">No technicians configured</div><div class="empty-sub">Add names to the Data Lists sheet under "Technicians"</div></div>';
+    return;
+  }
+  grid.innerHTML = TECH_LIST.sort().map(function(t) {
+    return '<button class="tech-tile" onclick="pickTech(\'' + escAttr(t) + '\')">' +
+             '<div class="tech-tile-ini">' + escHtml(initials(t)) + '</div>' +
+             '<div class="tech-tile-name">' + escHtml(t) + '</div>' +
+           '</button>';
+  }).join('');
+}
+
+function pickTech(name) {
+  SELECTED_TECH = name;
+  try { localStorage.setItem('csc_tech_name', name); } catch(e) {}
+  showBoard();
+}
+
+function switchTech() {
+  SELECTED_TECH = '';
+  try { localStorage.removeItem('csc_tech_name'); } catch(e) {}
+  showSplash();
+}
+
+function showBoard() {
+  document.getElementById('splashScreen').style.display = 'none';
+  document.getElementById('boardScreen').style.display = '';
+  document.getElementById('techNameDisplay').textContent = SELECTED_TECH;
+  document.getElementById('techIni').textContent = initials(SELECTED_TECH);
+  document.getElementById('hdrDate').textContent =
+    new Date().toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' }) + ' • tap to update';
+  renderTabs();
+  renderBody();
+}
+
+function switchTab(tab) {
+  CURRENT_TAB = tab;
+  document.querySelectorAll('.tab').forEach(function(t) {
+    t.classList.toggle('active', t.dataset.tab === tab);
+  });
+  renderBody();
+}
+
+function isActive(t) {
+  var s = String(t.status || '').toUpperCase();
+  return s !== 'CLOSED' && s !== 'COMPLETE';
+}
+
+function renderTabs() {
+  var active = ALL_TICKETS.filter(isActive);
+  var mine = active.filter(function(t) { return t.assignedTo === SELECTED_TECH; });
+  var pool = active.filter(function(t) { return !t.assignedTo || !t.assignedTo.trim(); });
+  document.getElementById('cntMine').textContent = mine.length;
+  document.getElementById('cntOpen').textContent = active.length;
+  document.getElementById('cntPool').textContent = pool.length;
+}
+
+function renderBody() {
+  var body = document.getElementById('bodyContent');
+  var today = new Date(); today.setHours(0, 0, 0, 0);
+  var active = ALL_TICKETS.filter(isActive);
+
+  if (CURRENT_TAB === 'mine') {
+    var mine = active.filter(function(t) { return t.assignedTo === SELECTED_TECH; });
+    mine.sort(byPriority);
+    body.innerHTML = mine.length === 0
+      ? emptyState('🎯', 'No tickets assigned to you', 'Check the Pool tab to pick up new work')
+      : '<div class="tkt-list">' + mine.map(function(t) { return renderRow(t, today); }).join('') + '</div>';
+  } else if (CURRENT_TAB === 'open') {
+    active.sort(byPriority);
+    body.innerHTML = active.length === 0
+      ? emptyState('✅', 'No active tickets', 'All caught up')
+      : '<div class="tkt-list">' + active.map(function(t) { return renderRow(t, today); }).join('') + '</div>';
+  } else {
+    var pool = active.filter(function(t) { return !t.assignedTo || !t.assignedTo.trim(); });
+    pool.sort(byPriority);
+    body.innerHTML = pool.length === 0
+      ? emptyState('📥', 'Pool is empty', 'Every ticket has been picked up')
+      : pool.map(function(t) { return renderCard(t, today); }).join('');
+  }
+}
+
+function renderCard(t, today) {
+  var p = (t.priority || 'MEDIUM').toLowerCase();
+  var age = ageInfo(t.dateOpened, today);
+  return '<div class="tkt-card p-' + p + '" onclick="openUpdate(\'' + escAttr(t.ticketNo) + '\')">' +
+    '<div class="tkt-top">' +
+      '<div><span class="tkt-pri p-' + p + '">' + escHtml(t.priority || '—') + '</span><span class="tkt-no">' + escHtml(t.ticketNo || '—') + '</span></div>' +
+      '<div class="tkt-age ' + age.cls + '">' + age.text + '</div>' +
+    '</div>' +
+    '<div class="tkt-equip">' + escHtml(t.specificEquip || t.equipType || '—') + '</div>' +
+    '<div class="tkt-dept">' + escHtml(t.dept || '') + (t.line ? ' • Line ' + escHtml(t.line) : '') + '</div>' +
+    (t.description ? '<div class="tkt-desc">' + escHtml(truncate(t.description, 140)) + '</div>' : '') +
+    '<div class="tkt-meta">' +
+      (t.problemType ? '<div class="tkt-meta-item"><span class="tkt-meta-lbl">Type:</span><span class="tkt-meta-val">' + escHtml(t.problemType) + '</span></div>' : '') +
+      (t.estHours ? '<div class="tkt-meta-item"><span class="tkt-meta-lbl">Est:</span><span class="tkt-meta-val">' + escHtml(t.estHours) + ' hr</span></div>' : '') +
+    '</div>' +
+    '<div class="tkt-action">✋ TAP TO PICK UP</div>' +
+  '</div>';
+}
+
+function renderRow(t, today) {
+  var p = (t.priority || 'MEDIUM').toLowerCase();
+  var s = String(t.status || 'OPEN').toUpperCase().replace(/\s+/g, '-').toLowerCase().split('-')[0];
+  var age = ageInfo(t.dateOpened, today);
+  var priLabel = (t.priority || 'MED').substring(0, 4);
+  return '<div class="tkt-row p-' + p + '" onclick="openUpdate(\'' + escAttr(t.ticketNo) + '\')">' +
+    '<div class="tkt-row-pri-dot">' + escHtml(priLabel) + '</div>' +
+    '<div class="tkt-row-body">' +
+      '<div class="tkt-row-top">' +
+        '<span class="tkt-row-no">' + escHtml(t.ticketNo || '—') + '</span>' +
+        '<span class="tkt-row-status s-' + s + '">' + escHtml(t.status || 'OPEN') + '</span>' +
+        '<span class="tkt-age ' + age.cls + '" style="margin-left:auto;font-size:11px">' + age.text + '</span>' +
+      '</div>' +
+      '<div class="tkt-row-equip">' + escHtml(t.specificEquip || t.equipType || '—') + '</div>' +
+      '<div class="tkt-row-meta">' + escHtml(t.dept || '') + (t.line ? ' • Line ' + escHtml(t.line) : '') + (t.problemType ? ' • ' + escHtml(t.problemType) : '') + '</div>' +
+    '</div>' +
+    '<div class="tkt-row-arrow">›</div>' +
+  '</div>';
+}
+
+function openUpdate(ticketNo) {
+  // Navigate to update page with ticket # and tech in URL
+  var url = 'update.html?ticket=' + encodeURIComponent(ticketNo) + '&tech=' + encodeURIComponent(SELECTED_TECH);
+  window.location.href = url;
+}
+
+function byPriority(a, b) {
+  var o = { CRITICAL:0, HIGH:1, MEDIUM:2, LOW:3 };
+  return (o[a.priority] || 3) - (o[b.priority] || 3);
+}
+
+function ageInfo(dateOpened, today) {
+  if (!dateOpened) return { text:'—', cls:'' };
+  var d = new Date(dateOpened);
+  if (isNaN(d)) return { text:'—', cls:'' };
+  var days = Math.floor((today - d) / 86400000);
+  if (days < 0) days = 0;
+  if (days === 0) return { text:'today', cls:'' };
+  if (days === 1) return { text:'1 day', cls:'' };
+  if (days <= 7)  return { text:days + ' days', cls:'' };
+  if (days <= 14) return { text:days + ' days', cls:'warn' };
+  return { text:days + ' days', cls:'crit' };
+}
+
+function initials(name) {
+  var parts = String(name || '').trim().split(/\s+/);
+  return ((parts[0][0] || '') + (parts[1] ? parts[1][0] : '')).toUpperCase();
+}
+
+function truncate(s, n) {
+  s = String(s || '');
+  return s.length > n ? s.substring(0, n) + '…' : s;
+}
+
+function emptyState(ico, msg, sub) {
+  return '<div class="empty"><div class="empty-ico">' + ico + '</div><div class="empty-msg">' + escHtml(msg) + '</div><div class="empty-sub">' + escHtml(sub) + '</div></div>';
+}
+
+function escHtml(v) {
+  var d = document.createElement('span');
+  d.textContent = String(v == null ? '' : v);
+  return d.innerHTML;
+}
+
+function escAttr(v) {
+  return String(v || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+}
+
+// Auto-refresh every 60 seconds — no more stale ticket lists
+setInterval(function() {
+  if (document.getElementById('boardScreen').style.display !== 'none') {
+    loadData();
+  }
+}, 60000);
+</script>
+
+</body>
+</html>
