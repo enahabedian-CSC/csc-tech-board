@@ -199,7 +199,7 @@ function renderCard(t, today) {
     '</div>' +
     '<div class="tkt-equip">' + escHtml(t.specificEquip || t.equipType || '—') + '</div>' +
     '<div class="tkt-dept">' + escHtml(t.dept || '') + (t.line ? ' • Line ' + escHtml(t.line) : '') + '</div>' +
-    (t.description ? '<div class="tkt-desc">' + escHtml(truncate(t.description, 140)) + '</div>' : '') +
+    (t.description ? '<div class="tkt-desc">' + escHtml(truncate(t.description, 200)) + '</div>' : '') +
     '<div class="tkt-meta">' +
       (t.problemType ? '<div class="tkt-meta-item"><span class="tkt-meta-lbl">Type:</span><span class="tkt-meta-val">' + escHtml(t.problemType) + '</span></div>' : '') +
       (t.estHours ? '<div class="tkt-meta-item"><span class="tkt-meta-lbl">Est:</span><span class="tkt-meta-val">' + escHtml(t.estHours) + ' hr</span></div>' : '') +
