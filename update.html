@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Update Ticket — CSC Tech Board</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared/styles.css">
+</head>
+
+<script src="shared/config.js"></script>
+<script src="shared/api.js"></script>
+
+<body>
+
+<div class="hdr">
+  <button class="btn-back" onclick="goBack()">← BACK</button>
+  <div style="flex:1">
+    <div class="hdr-title">UPDATE TICKET</div>
+    <div class="hdr-tno" id="hdrTno">Loading…</div>
+  </div>
+</div>
+
+<div class="progress" id="progress" style="display:none">
+  <div class="prog-dot" data-step="1"></div>
+  <div class="prog-dot" data-step="2"></div>
+  <div class="prog-dot" data-step="3"></div>
+</div>
+
+<div class="body" id="body" style="padding:14px 16px 100px;max-width:740px;margin:0 auto">
+  <div class="loading">Loading ticket…</div>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <div class="modal-ico" id="modalIco">✅</div>
+    <div class="modal-msg" id="modalMsg">Saved!</div>
+    <div class="modal-sub" id="modalSub"></div>
+    <button class="modal-btn" onclick="goBack()">BACK TO BOARD</button>
+  </div>
+</div>
+
+<script>
+var TICKET_NO = '';
+var TICKET = null;
+var TECH = '';
+var STEP = 0;
+var FORM_DATA = {
+  actualHours:'', fixType:'', correctiveAction:'', rootCause:'', workSummary:'',
+  tempFix:false, partsNeeded:false, partsStatus:'', notes:''
+};
+
+window.onload = function() {
+  var params = new URLSearchParams(window.location.search);
+  TICKET_NO = (params.get('ticket') || '').trim().replace(/^["'](.*)["']$/, '$1').trim().toUpperCase();
+  TECH = params.get('tech') || '';
+  try { if (!TECH) TECH = localStorage.getItem('csc_tech_name') || ''; } catch(e) {}
+  if (!TICKET_NO) {
+    document.getElementById('body').innerHTML = '<div class="err-banner">No ticket # in URL.</div>';
+    return;
+  }
+  loadTicket();
+};
+
+async function loadTicket() {
+  try {
+    const r = await CSC_API.getTicket(TICKET_NO);
+    if (!r.success) {
+      document.getElementById('body').innerHTML = '<div class="err-banner">' + escHtml(r.error) + '</div>';
+      return;
+    }
+    TICKET = r;
+    renderInitial();
+  } catch(e) {
+    document.getElementById('body').innerHTML = '<div class="err-banner">' + escHtml(e.message) + '</div>';
+  }
+}
+
+function renderInitial() {
+  document.getElementById('hdrTno').textContent = TICKET.ticketNo;
+  STEP = 0;
+  document.getElementById('progress').style.display = 'none';
+  var foot = document.getElementById('foot'); if (foot) foot.remove();
+  var p = (TICKET.priority || 'MEDIUM').toLowerCase();
+  document.getElementById('body').innerHTML =
+    '<div class="info-card">' +
+      '<div class="info-top">' +
+        '<span class="info-pri p-' + p + '">' + escHtml(TICKET.priority || '—') + '</span>' +
+        '<span class="info-status">' + escHtml(TICKET.status || 'OPEN') + '</span>' +
+      '</div>' +
+      '<div class="info-equip">' + escHtml(TICKET.specificEquip || TICKET.equipType || '—') + '</div>' +
+      '<div class="info-dept">' + escHtml(TICKET.dept || '') + (TICKET.lineNo ? ' • Line ' + escHtml(TICKET.lineNo) : '') + (TICKET.equipCode ? ' • ' + escHtml(TICKET.equipCode) : '') + '</div>' +
+      (TICKET.description ? '<div class="info-desc"><div class="info-desc-lbl">Problem</div>' + escHtml(TICKET.description) + '</div>' : '') +
+    '</div>' +
+    '<div>' +
+      '<div class="step-title">QUICK STATUS</div>' +
+      '<div class="step-sub">Tap to update — or scroll down to complete</div>' +
+      '<div class="quick-grid">' +
+        '<button class="quick-btn q-start"   onclick="doQuick(\'OPEN\')">▶ START WORK</button>' +
+        '<button class="quick-btn q-pending" onclick="doQuick(\'PENDING PARTS\')">🔩 PENDING PARTS</button>' +
+        '<button class="quick-btn q-hold"    onclick="doQuick(\'ON HOLD\')" style="grid-column:span 2">⏸ PUT ON HOLD</button>' +
+        '<button class="quick-btn q-complete" onclick="startCompleteFlow()">✅ COMPLETE &amp; SUBMIT REPORT</button>' +
+      '</div>' +
+    '</div>';
+}
+
+function startCompleteFlow() { STEP = 1; document.getElementById('progress').style.display = ''; renderStep(); }
+
+function renderStep() {
+  document.querySelectorAll('.prog-dot').forEach(function(d) {
+    var n = parseInt(d.dataset.step, 10);
+    d.classList.toggle('active', n === STEP);
+    d.classList.toggle('done', n < STEP);
+  });
+
+  var p = (TICKET.priority || 'MEDIUM').toLowerCase();
+  var infoCard =
+    '<div class="info-card">' +
+      '<div class="info-top">' +
+        '<span class="info-pri p-' + p + '">' + escHtml(TICKET.priority || '—') + '</span>' +
+        '<span class="info-status">' + escHtml(TICKET.status || 'OPEN') + '</span>' +
+      '</div>' +
+      '<div class="info-equip">' + escHtml(TICKET.specificEquip || TICKET.equipType || '—') + '</div>' +
+      '<div class="info-dept">' + escHtml(TICKET.dept || '') + (TICKET.lineNo ? ' • Line ' + escHtml(TICKET.lineNo) : '') + '</div>' +
+      (TICKET.description ? '<div class="info-desc"><div class="info-desc-lbl">Problem</div>' + escHtml(TICKET.description) + '</div>' : '') +
+    '</div>';
+
+  if (STEP === 1) {
+    document.getElementById('body').innerHTML = infoCard + renderStep1();
+  } else if (STEP === 2) {
+    document.getElementById('body').innerHTML = infoCard + renderStep2();
+  } else if (STEP === 3) {
+    document.getElementById('body').innerHTML = infoCard + renderStep3();
+  }
+  renderFoot();
+}
+
+function renderStep1() {
+  var fixOpts = ['', 'Permanent', 'Temporary'].map(function(v) {
+    return '<option value="' + escAttr(v) + '"' + (v === FORM_DATA.fixType ? ' selected' : '') + '>' + (v || '—') + '</option>';
+  }).join('');
+
+  return '<div>' +
+    '<div class="step-title">STEP 1 — WHAT YOU DID</div>' +
+    '<div class="step-sub">Tell us about the repair</div>' +
+    '<div class="row2">' +
+      '<div class="field"><label class="field-lbl">Actual Hours</label>' +
+        '<input class="field-input" type="number" step="0.25" min="0" id="actualHours" placeholder="e.g. 2.5" value="' + escAttr(FORM_DATA.actualHours) + '"></div>' +
+      '<div class="field"><label class="field-lbl">Fix Type</label>' +
+        '<select class="field-select" id="fixType">' + fixOpts + '</select></div>' +
+    '</div>' +
+    '<div class="field"><label class="field-lbl">Corrective Action *</label>' +
+      '<textarea class="field-textarea" id="correctiveAction" placeholder="What did you fix or replace?">' + escHtml(FORM_DATA.correctiveAction) + '</textarea></div>' +
+    '<div class="field"><label class="field-lbl">Root Cause (optional)</label>' +
+      '<textarea class="field-textarea" id="rootCause" placeholder="Why did this happen?">' + escHtml(FORM_DATA.rootCause) + '</textarea></div>' +
+    '<div class="chk-row ' + (FORM_DATA.tempFix ? 'checked' : '') + '" onclick="toggleChk(\'tempFix\')">' +
+      '<div class="chk-box">' + (FORM_DATA.tempFix ? '✓' : '') + '</div>' +
+      '<div class="chk-lbl">⚠️ This is a temporary fix — needs follow-up monitoring</div>' +
+    '</div>' +
+    '<div class="chk-row ' + (FORM_DATA.partsNeeded ? 'checked' : '') + '" onclick="toggleChk(\'partsNeeded\')">' +
+      '<div class="chk-box">' + (FORM_DATA.partsNeeded ? '✓' : '') + '</div>' +
+      '<div class="chk-lbl">🔩 Parts still needed for permanent fix</div>' +
+    '</div>' +
+    '<div class="field" id="partsStatusWrap" style="display:' + (FORM_DATA.partsNeeded ? 'block' : 'none') + '">' +
+      '<label class="field-lbl">Parts Status</label>' +
+      '<select class="field-select" id="partsStatus">' +
+        '<option value="">—</option>' +
+        (TICKET.partsStatuses || []).map(function(s) {
+          return '<option value="' + escAttr(s) + '"' + (s === FORM_DATA.partsStatus ? ' selected' : '') + '>' + escHtml(s) + '</option>';
+        }).join('') +
+      '</select>' +
+    '</div>' +
+  '</div>';
+}
+
+function renderStep2() {
+  return '<div>' +
+    '<div class="step-title">STEP 2 — DETAILS</div>' +
+    '<div class="step-sub">Photos coming in Phase 5 — for now just add work notes</div>' +
+    '<div class="field"><label class="field-lbl">Work Summary (optional)</label>' +
+      '<textarea class="field-textarea" id="workSummary" placeholder="Additional details about the work">' + escHtml(FORM_DATA.workSummary) + '</textarea></div>' +
+    '<div class="field"><label class="field-lbl">Notes for Manager (optional)</label>' +
+      '<textarea class="field-textarea" id="notes" placeholder="Anything else the manager should know">' + escHtml(FORM_DATA.notes) + '</textarea></div>' +
+  '</div>';
+}
+
+function renderStep3() {
+  return '<div>' +
+    '<div class="step-title">STEP 3 — REVIEW</div>' +
+    '<div class="step-sub">Check it over, then submit for manager review</div>' +
+    '<div class="info-card" style="border-left-color:#66BB6A">' +
+      '<div class="review-row"><span class="review-lbl">Tech</span><span class="review-val">' + escHtml(TECH || '—') + '</span></div>' +
+      '<div class="review-row"><span class="review-lbl">Actual Hours</span><span class="review-val">' + escHtml(FORM_DATA.actualHours || '—') + '</span></div>' +
+      '<div class="review-row"><span class="review-lbl">Fix Type</span><span class="review-val">' + escHtml(FORM_DATA.fixType || '—') + '</span></div>' +
+      '<div class="review-row"><span class="review-lbl">Temp Fix</span><span class="review-val">' + (FORM_DATA.tempFix ? 'YES' : 'No') + '</span></div>' +
+      '<div class="review-row"><span class="review-lbl">Parts Still Needed</span><span class="review-val">' + (FORM_DATA.partsNeeded ? (FORM_DATA.partsStatus || 'YES') : 'No') + '</span></div>' +
+      '<div class="review-row" style="flex-direction:column"><span class="review-lbl">Corrective Action</span><span class="review-val long">' + escHtml(FORM_DATA.correctiveAction || '—') + '</span></div>' +
+      (FORM_DATA.rootCause   ? '<div class="review-row" style="flex-direction:column"><span class="review-lbl">Root Cause</span><span class="review-val long">' + escHtml(FORM_DATA.rootCause) + '</span></div>' : '') +
+      (FORM_DATA.workSummary ? '<div class="review-row" style="flex-direction:column"><span class="review-lbl">Summary</span><span class="review-val long">' + escHtml(FORM_DATA.workSummary) + '</span></div>' : '') +
+      (FORM_DATA.notes       ? '<div class="review-row" style="flex-direction:column"><span class="review-lbl">Notes</span><span class="review-val long">' + escHtml(FORM_DATA.notes) + '</span></div>' : '') +
+    '</div>' +
+    '<div style="text-align:center;padding:14px;background:rgba(102,187,106,.1);border:1px solid #66BB6A;border-radius:10px;color:#66BB6A;font-size:13px;letter-spacing:.8px">Manager will verify before final close</div>' +
+  '</div>';
+}
+
+function renderFoot() {
+  var oldFoot = document.getElementById('foot');
+  if (oldFoot) oldFoot.remove();
+  if (STEP === 0) return;
+  var foot = document.createElement('div');
+  foot.className = 'foot';
+  foot.id = 'foot';
+  if (STEP === 1) {
+    foot.innerHTML = '<button class="btn-nav btn-prev" onclick="cancelFlow()">CANCEL</button>' +
+                     '<button class="btn-nav btn-next" onclick="goStep(2)">NEXT →</button>';
+  } else if (STEP === 2) {
+    foot.innerHTML = '<button class="btn-nav btn-prev" onclick="goStep(1)">← BACK</button>' +
+                     '<button class="btn-nav btn-next" onclick="goStep(3)">REVIEW →</button>';
+  } else if (STEP === 3) {
+    foot.innerHTML = '<button class="btn-nav btn-prev" onclick="goStep(2)">← BACK</button>' +
+                     '<button class="btn-nav btn-submit" onclick="submitFinal()">✅ SUBMIT</button>';
+  }
+  document.body.appendChild(foot);
+}
+
+function goStep(target) {
+  if (STEP === 1 && target === 2) {
+    FORM_DATA.actualHours      = document.getElementById('actualHours').value.trim();
+    FORM_DATA.fixType          = document.getElementById('fixType').value;
+    FORM_DATA.correctiveAction = document.getElementById('correctiveAction').value.trim();
+    FORM_DATA.rootCause        = document.getElementById('rootCause').value.trim();
+    if (!FORM_DATA.correctiveAction) {
+      alert('Please describe the corrective action before continuing.');
+      document.getElementById('correctiveAction').focus();
+      return;
+    }
+    if (FORM_DATA.partsNeeded) FORM_DATA.partsStatus = document.getElementById('partsStatus').value;
+  } else if (STEP === 2 && target === 3) {
+    FORM_DATA.workSummary = document.getElementById('workSummary').value.trim();
+    FORM_DATA.notes       = document.getElementById('notes').value.trim();
+  }
+  STEP = target;
+  renderStep();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function cancelFlow() {
+  if (!confirm('Cancel and lose your progress?')) return;
+  STEP = 0;
+  FORM_DATA = { actualHours:'', fixType:'', correctiveAction:'', rootCause:'', workSummary:'',
+                tempFix:false, partsNeeded:false, partsStatus:'', notes:'' };
+  document.getElementById('progress').style.display = 'none';
+  renderInitial();
+}
+
+function toggleChk(id) {
+  if (id === 'tempFix') FORM_DATA.tempFix = !FORM_DATA.tempFix;
+  if (id === 'partsNeeded') FORM_DATA.partsNeeded = !FORM_DATA.partsNeeded;
+  var ah  = document.getElementById('actualHours');      if (ah)  FORM_DATA.actualHours      = ah.value;
+  var ft  = document.getElementById('fixType');          if (ft)  FORM_DATA.fixType          = ft.value;
+  var ca  = document.getElementById('correctiveAction'); if (ca)  FORM_DATA.correctiveAction = ca.value;
+  var rc  = document.getElementById('rootCause');        if (rc)  FORM_DATA.rootCause        = rc.value;
+  renderStep();
+}
+
+async function doQuick(newStatus) {
+  if (!TECH) { alert('Tech name missing — go back and pick your name first.'); return; }
+  if (!confirm('Set this ticket to ' + newStatus + '?')) return;
+  showModal('⏳', 'UPDATING…', '');
+  try {
+    const r = await CSC_API.quickStatus({ ticketNo: TICKET_NO, newStatus: newStatus, tech: TECH });
+    if (r.success) showModal('✅', 'STATUS UPDATED', 'Ticket is now ' + newStatus);
+    else showModal('⚠️', 'ERROR', r.error);
+  } catch(e) {
+    showModal('⚠️', 'ERROR', e.message);
+  }
+}
+
+async function submitFinal() {
+  if (!TECH) { alert('Tech name missing.'); return; }
+  if (!confirm('Submit this ticket as COMPLETE?\n\nManager will verify before final close.')) return;
+  showModal('⏳', 'SUBMITTING…', 'Saving to tracker');
+  try {
+    const r = await CSC_API.completeTicket({
+      ticketNo: TICKET_NO,
+      tech: TECH,
+      newStatus: 'COMPLETE',
+      actualHours: FORM_DATA.actualHours,
+      fixType: FORM_DATA.fixType,
+      correctiveAction: FORM_DATA.correctiveAction,
+      rootCause: FORM_DATA.rootCause,
+      workSummary: FORM_DATA.workSummary,
+      tempFixFlag: FORM_DATA.tempFix,
+      partsNeeded: FORM_DATA.partsNeeded,
+      partsStatus: FORM_DATA.partsStatus,
+      notes: FORM_DATA.notes,
+      lineNo: TICKET.lineNo
+    });
+    if (r.success) showModal('✅', 'SUBMITTED!', 'Sent to manager for review.');
+    else showModal('⚠️', 'ERROR', r.error);
+  } catch(e) {
+    showModal('⚠️', 'ERROR', e.message);
+  }
+}
+
+function showModal(ico, msg, sub) {
+  document.getElementById('modalIco').textContent = ico;
+  document.getElementById('modalMsg').textContent = msg;
+  document.getElementById('modalSub').textContent = sub || '';
+  document.getElementById('overlay').classList.add('show');
+}
+
+function goBack() {
+  window.location.href = 'board.html';
+}
+
+function escHtml(v) {
+  var d = document.createElement('span');
+  d.textContent = String(v == null ? '' : v);
+  return d.innerHTML;
+}
+
+function escAttr(v) {
+  return String(v || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+}
+</script>
+
+</body>
+</html>
