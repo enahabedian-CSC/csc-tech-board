@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>CSC Tech Board — Phase 2 Test</title>
+<title>CSC Tech Board — Phase 4 Test</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;font-family:Arial,sans-serif}
 body{background:#0F1A2A;color:#E8EEF5;padding:24px;min-height:100vh}
@@ -14,14 +14,14 @@ h1{color:#FFD700;margin-bottom:6px;font-size:24px}
 .status-ok{color:#66BB6A;font-weight:bold}
 .status-err{color:#EF5350;font-weight:bold}
 .status-pending{color:#FFA726;font-weight:bold}
-.btn{background:#FFD700;color:#0F1A2A;padding:10px 18px;border:none;border-radius:6px;font-weight:bold;cursor:pointer;font-size:13px;margin-right:8px}
+.btn{background:#FFD700;color:#0F1A2A;padding:10px 18px;border:none;border-radius:6px;font-weight:bold;cursor:pointer;font-size:13px;margin-right:8px;margin-top:4px}
 .btn:hover{background:#FFC107}
+.btn-write{background:#2E7D32;color:#fff}
+.btn-write:hover{background:#388E3C}
 .code{background:#0F1A2A;padding:12px;border-radius:6px;font-family:'Courier New',monospace;font-size:12px;color:#88A;margin-top:8px;white-space:pre-wrap;word-break:break-all;border:1px solid #2A3E55;max-height:300px;overflow:auto}
-.ticket{background:#15212F;border-radius:8px;padding:12px;margin-top:8px;border-left:3px solid #FFA726}
-.ticket-no{font-family:monospace;color:#FFD700;font-weight:bold}
-.ticket-equip{font-size:16px;font-weight:bold;margin:6px 0}
-.ticket-desc{color:#B8C5D5;font-size:13px}
-.pri-high{color:#FFA726}.pri-critical{color:#EF5350}.pri-medium{color:#FFD700}.pri-low{color:#66BB6A}
+input{background:#0F1A2A;color:#E8EEF5;border:1.5px solid #2A3E55;padding:8px 12px;border-radius:6px;font-family:monospace;font-size:13px;margin-right:8px;margin-top:4px;min-width:200px}
+input:focus{outline:none;border-color:#FFD700}
+label{display:inline-block;font-size:12px;color:#88A;margin-right:4px;text-transform:uppercase;letter-spacing:.5px}
 </style>
 </head>
 
@@ -30,99 +30,137 @@ h1{color:#FFD700;margin-bottom:6px;font-size:24px}
 
 <body>
 
-<h1>⚡ CSC TECH BOARD — Phase 2 Test</h1>
-<div class="sub">Verifying GitHub Pages → Cloudflare Worker pipeline</div>
+<h1>⚡ CSC TECH BOARD — Phase 4 Test (Write Endpoints)</h1>
+<div class="sub">Verifying tickets can be assigned and updated through the Worker</div>
 
 <div class="section">
-  <h2>1. Worker Configuration</h2>
-  <div>Worker URL: <span id="cfgUrl" class="code">checking…</span></div>
-</div>
-
-<div class="section">
-  <h2>2. Health Check (GET /health)</h2>
-  <div>Status: <span id="healthStatus" class="status-pending">pending…</span></div>
-  <div class="code" id="healthResult">waiting for response…</div>
-  <button class="btn" onclick="testHealth()">↻ Retry Health Check</button>
-</div>
-
-<div class="section">
-  <h2>3. Board Data (POST /api/board)</h2>
-  <div>Status: <span id="boardStatus" class="status-pending">pending…</span></div>
-  <div id="boardData"></div>
-  <button class="btn" onclick="testBoard()">↻ Retry Board Call</button>
-</div>
-
-<div class="section">
-  <h2>4. Single Ticket (POST /api/ticket/get)</h2>
-  <div>Status: <span id="ticketStatus" class="status-pending">pending…</span></div>
-  <div class="code" id="ticketResult">waiting…</div>
-  <button class="btn" onclick="testTicket()">↻ Retry Ticket Lookup</button>
-</div>
-
-<div class="section" style="border-left-color:#66BB6A">
-  <h2>If all 4 sections above are green ✅</h2>
-  <div style="font-size:13px;color:#B8C5D5">
-    The full pipeline works. Tablet browser → GitHub Pages HTML → Cloudflare Worker → JSON response.
-    Phase 3 will swap the fake data for real Google Sheets reads.
+  <h2>Setup — Enter a real ticket # and tech name for tests</h2>
+  <div>
+    <label>Ticket #</label>
+    <input type="text" id="testTicketNo" value="MT-001-260512-013">
+    <label>Tech</label>
+    <input type="text" id="testTech" value="Edward Test">
   </div>
+</div>
+
+<div class="section">
+  <h2>1. Health (GET /health)</h2>
+  <div>Status: <span id="healthStatus" class="status-pending">pending…</span></div>
+  <div class="code" id="healthResult">waiting…</div>
+</div>
+
+<div class="section">
+  <h2>2. Get Ticket (POST /api/ticket/get)</h2>
+  <div>Status: <span id="getStatus" class="status-pending">pending…</span></div>
+  <button class="btn" onclick="testGet()">Run Get</button>
+  <div class="code" id="getResult">waiting…</div>
+</div>
+
+<div class="section" style="border-left-color:#2E7D32">
+  <h2>3. Assign Ticket (POST /api/ticket/assign) — WRITES to sheet</h2>
+  <div>Status: <span id="assignStatus" class="status-pending">not run</span></div>
+  <button class="btn btn-write" onclick="testAssign()">Assign Now</button>
+  <div class="code" id="assignResult">click button to test</div>
+</div>
+
+<div class="section" style="border-left-color:#2E7D32">
+  <h2>4. Quick Status (POST /api/ticket/status) — WRITES to sheet</h2>
+  <div>Status: <span id="statusStatus" class="status-pending">not run</span></div>
+  <button class="btn btn-write" onclick="testStatus('OPEN')">Set OPEN</button>
+  <button class="btn btn-write" onclick="testStatus('PENDING PARTS')">Set PENDING PARTS</button>
+  <button class="btn btn-write" onclick="testStatus('ON HOLD')">Set ON HOLD</button>
+  <div class="code" id="statusResult">click a button to test</div>
+</div>
+
+<div class="section" style="border-left-color:#2E7D32">
+  <h2>5. Complete Ticket (POST /api/ticket/complete) — WRITES to sheet</h2>
+  <div>Status: <span id="completeStatus" class="status-pending">not run</span></div>
+  <button class="btn btn-write" onclick="testComplete()">Mark Complete</button>
+  <div class="code" id="completeResult">click button to test</div>
+  <div style="font-size:11px;color:#88A;margin-top:8px">⚠️ This moves the ticket from Open Tickets to Waiting Queue and creates a manager review entry.</div>
 </div>
 
 <script>
 window.onload = async function() {
-  // Show the configured Worker URL
-  document.getElementById('cfgUrl').textContent =
-    (window.CSC_CONFIG && window.CSC_CONFIG.WORKER_URL) || '⚠️ NOT SET';
-
-  // Run all tests automatically
   await testHealth();
-  await testBoard();
-  await testTicket();
+  await testGet();
 };
 
 async function testHealth() {
   setStatus('healthStatus', 'pending');
   try {
     const data = await CSC_API.health();
-    setStatus('healthStatus', 'ok', '✅ OK');
+    setStatus('healthStatus', 'ok', '✅ phase ' + data.phase);
     document.getElementById('healthResult').textContent = JSON.stringify(data, null, 2);
   } catch(e) {
     setStatus('healthStatus', 'err', '❌ ' + e.message);
-    document.getElementById('healthResult').textContent = e.message;
   }
 }
 
-async function testBoard() {
-  setStatus('boardStatus', 'pending');
+async function testGet() {
+  setStatus('getStatus', 'pending');
+  const ticketNo = document.getElementById('testTicketNo').value.trim();
   try {
-    const data = await CSC_API.getBoard();
-    setStatus('boardStatus', 'ok', '✅ OK — ' + (data.tickets || []).length + ' ticket(s)');
-
-    const div = document.getElementById('boardData');
-    div.innerHTML = '<div style="margin-top:10px">Company: <b>' + escHtml(data.companyName) + '</b><br>Location: <b>' + escHtml(data.location) + '</b><br>Technicians: <b>' + (data.technicians || []).join(', ') + '</b></div>';
-
-    if (data.tickets && data.tickets.length > 0) {
-      div.innerHTML += data.tickets.map(t => {
-        const p = (t.priority || 'MEDIUM').toLowerCase();
-        return '<div class="ticket"><div><span class="ticket-no">' + escHtml(t.ticketNo) + '</span> · <span class="pri-' + p + '">' + escHtml(t.priority) + '</span></div>' +
-          '<div class="ticket-equip">' + escHtml(t.specificEquip || t.equipType) + '</div>' +
-          '<div class="ticket-desc">' + escHtml(t.description) + '</div></div>';
-      }).join('');
-    }
+    const data = await CSC_API.getTicket(ticketNo);
+    setStatus('getStatus', data.success ? 'ok' : 'err', data.success ? '✅ OK' : '❌ ' + data.error);
+    document.getElementById('getResult').textContent = JSON.stringify(data, null, 2);
   } catch(e) {
-    setStatus('boardStatus', 'err', '❌ ' + e.message);
-    document.getElementById('boardData').innerHTML = '<div class="code">' + escHtml(e.message) + '</div>';
+    setStatus('getStatus', 'err', '❌ ' + e.message);
+    document.getElementById('getResult').textContent = e.message;
   }
 }
 
-async function testTicket() {
-  setStatus('ticketStatus', 'pending');
+async function testAssign() {
+  setStatus('assignStatus', 'pending');
+  const ticketNo = document.getElementById('testTicketNo').value.trim();
+  const tech = document.getElementById('testTech').value.trim();
   try {
-    const data = await CSC_API.getTicket('MT-001-260517-001');
-    setStatus('ticketStatus', 'ok', '✅ OK');
-    document.getElementById('ticketResult').textContent = JSON.stringify(data, null, 2);
+    const data = await CSC_API.assignTicket({ ticketNo, tech });
+    setStatus('assignStatus', data.success ? 'ok' : 'err', data.success ? '✅ Assigned to ' + tech : '❌ ' + data.error);
+    document.getElementById('assignResult').textContent = JSON.stringify(data, null, 2);
   } catch(e) {
-    setStatus('ticketStatus', 'err', '❌ ' + e.message);
-    document.getElementById('ticketResult').textContent = e.message;
+    setStatus('assignStatus', 'err', '❌ ' + e.message);
+  }
+}
+
+async function testStatus(newStatus) {
+  setStatus('statusStatus', 'pending');
+  const ticketNo = document.getElementById('testTicketNo').value.trim();
+  const tech = document.getElementById('testTech').value.trim();
+  try {
+    const data = await CSC_API.quickStatus({ ticketNo, newStatus, tech });
+    setStatus('statusStatus', data.success ? 'ok' : 'err', data.success ? '✅ Status: ' + newStatus : '❌ ' + data.error);
+    document.getElementById('statusResult').textContent = JSON.stringify(data, null, 2);
+  } catch(e) {
+    setStatus('statusStatus', 'err', '❌ ' + e.message);
+  }
+}
+
+async function testComplete() {
+  setStatus('completeStatus', 'pending');
+  const ticketNo = document.getElementById('testTicketNo').value.trim();
+  const tech = document.getElementById('testTech').value.trim();
+  if (!confirm('Mark ' + ticketNo + ' as COMPLETE? This will move it from Open Tickets to Waiting Queue.')) {
+    setStatus('completeStatus', 'pending', 'cancelled');
+    return;
+  }
+  try {
+    const data = await CSC_API.completeTicket({
+      ticketNo, tech,
+      newStatus: 'COMPLETE',
+      actualHours: 1.5,
+      fixType: 'Permanent',
+      correctiveAction: 'Phase 4 test — replace this with real corrective action',
+      rootCause: 'Phase 4 test root cause',
+      workSummary: 'Phase 4 test work summary',
+      tempFixFlag: false,
+      partsNeeded: false,
+      notes: 'Submitted via Phase 4 test page'
+    });
+    setStatus('completeStatus', data.success ? 'ok' : 'err', data.success ? '✅ Submitted for review' : '❌ ' + data.error);
+    document.getElementById('completeResult').textContent = JSON.stringify(data, null, 2);
+  } catch(e) {
+    setStatus('completeStatus', 'err', '❌ ' + e.message);
   }
 }
 
@@ -130,12 +168,6 @@ function setStatus(id, cls, text) {
   const el = document.getElementById(id);
   el.className = 'status-' + cls;
   el.textContent = text || (cls === 'pending' ? 'pending…' : cls);
-}
-
-function escHtml(v) {
-  const d = document.createElement('span');
-  d.textContent = String(v == null ? '' : v);
-  return d.innerHTML;
 }
 </script>
 
