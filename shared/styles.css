@@ -121,7 +121,7 @@ html,body{height:100%;background:#0F1A2A;color:#E8EEF5;font-family:'Barlow Conde
 
 .tkt-equip{font-size:17px;font-weight:600;color:#E8EEF5;line-height:1.2;margin:8px 0 4px}
 .tkt-dept{font-size:13px;color:#88A;font-weight:500;margin-bottom:8px;letter-spacing:.5px}
-.tkt-desc{font-size:14px;color:#B8C5D5;line-height:1.35;margin:6px 0 10px}
+.tkt-desc{font-size:17px;color:#E8EEF5;line-height:1.4;margin:8px 0 12px;font-weight:500}
 
 .tkt-meta{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:#88A;border-top:1px solid #2A3E55;padding-top:8px}
 .tkt-meta-item{display:flex;align-items:center;gap:5px}
@@ -215,7 +215,7 @@ html,body{height:100%;background:#0F1A2A;color:#E8EEF5;font-family:'Barlow Conde
 .info-status{font-size:11px;color:#88A;letter-spacing:1px;text-transform:uppercase;padding-top:6px}
 .info-equip{font-size:20px;font-weight:700;color:#E8EEF5;line-height:1.2;margin:8px 0 4px}
 .info-dept{font-size:13px;color:#88A;font-weight:500;letter-spacing:.5px;margin-bottom:10px}
-.info-desc{font-size:14px;color:#B8C5D5;line-height:1.4;padding-top:8px;border-top:1px solid #2A3E55}
+.info-desc{font-size:18px;color:#E8EEF5;line-height:1.45;padding-top:10px;border-top:1px solid #2A3E55;font-weight:500}
 .info-desc-lbl{font-size:11px;color:#667;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px}
 
 .step-title{font-size:22px;font-weight:700;color:#FFD700;letter-spacing:1px;margin-bottom:6px;text-transform:uppercase}
