@@ -117,7 +117,7 @@ async function testBoard() {
 async function testTicket() {
   setStatus('ticketStatus', 'pending');
   try {
-    const data = await CSC_API.getTicket('FAKE-001');
+    const data = await CSC_API.getTicket('MT-001-260517-001');
     setStatus('ticketStatus', 'ok', '✅ OK');
     document.getElementById('ticketResult').textContent = JSON.stringify(data, null, 2);
   } catch(e) {
