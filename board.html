@@ -50,8 +50,7 @@
 
   <div class="tab-bar">
     <button class="tab active" data-tab="mine" onclick="switchTab('mine')">My Tickets <span class="tab-count" id="cntMine">0</span></button>
-    <button class="tab" data-tab="open" onclick="switchTab('open')">All Open <span class="tab-count" id="cntOpen">0</span></button>
-    <button class="tab" data-tab="pool" onclick="switchTab('pool')">Pool <span class="tab-count" id="cntPool">0</span></button>
+    <button class="tab" data-tab="pool" onclick="switchTab('pool')">My Dept Pool <span class="tab-count" id="cntPool">0</span></button>
   </div>
 
   <div class="body" id="bodyContent">
@@ -64,9 +63,11 @@
 <script>
 var ALL_TICKETS = [];
 var TECH_LIST   = [];
+var TECH_DEPTS  = {};           // { "Anthony Gonzalez": "METALS", ... }
 var SELECTED_TECH = '';
+var SELECTED_DEPT = '';
 var CURRENT_TAB = 'mine';
-
+  
 window.onload = function() {
   try { SELECTED_TECH = localStorage.getItem('csc_tech_name') || ''; } catch(e) {}
   loadData();
@@ -76,12 +77,14 @@ async function loadData() {
   try {
     const d = await CSC_API.getBoard();
     ALL_TICKETS = d.tickets || [];
+    TECH_DEPTS  = d.techDepartments || {};
     var seen = {}, fromTickets = [];
     ALL_TICKETS.forEach(function(t) {
       if (t.assignedTo && !seen[t.assignedTo]) { seen[t.assignedTo] = true; fromTickets.push(t.assignedTo); }
     });
     TECH_LIST = (d.technicians && d.technicians.length) ? d.technicians : fromTickets;
     if (SELECTED_TECH && TECH_LIST.indexOf(SELECTED_TECH) >= 0) {
+      SELECTED_DEPT = TECH_DEPTS[SELECTED_TECH] || '';
       showBoard();
     } else {
       showSplash();
@@ -110,12 +113,14 @@ function showSplash() {
 
 function pickTech(name) {
   SELECTED_TECH = name;
+  SELECTED_DEPT = TECH_DEPTS[name] || '';
   try { localStorage.setItem('csc_tech_name', name); } catch(e) {}
   showBoard();
 }
 
 function switchTech() {
   SELECTED_TECH = '';
+  SELECTED_DEPT = '';
   try { localStorage.removeItem('csc_tech_name'); } catch(e) {}
   showSplash();
 }
@@ -125,12 +130,13 @@ function showBoard() {
   document.getElementById('boardScreen').style.display = '';
   document.getElementById('techNameDisplay').textContent = SELECTED_TECH;
   document.getElementById('techIni').textContent = initials(SELECTED_TECH);
+  var deptLabel = SELECTED_DEPT ? ' • ' + SELECTED_DEPT : '';
   document.getElementById('hdrDate').textContent =
-    new Date().toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' }) + ' • tap to update';
+    new Date().toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' }) + deptLabel;
   renderTabs();
   renderBody();
 }
-
+  
 function switchTab(tab) {
   CURRENT_TAB = tab;
   document.querySelectorAll('.tab').forEach(function(t) {
@@ -147,10 +153,18 @@ function isActive(t) {
 function renderTabs() {
   var active = ALL_TICKETS.filter(isActive);
   var mine = active.filter(function(t) { return t.assignedTo === SELECTED_TECH; });
-  var pool = active.filter(function(t) { return !t.assignedTo || !t.assignedTo.trim(); });
+  var pool = active.filter(isInMyPool);
   document.getElementById('cntMine').textContent = mine.length;
-  document.getElementById('cntOpen').textContent = active.length;
   document.getElementById('cntPool').textContent = pool.length;
+}
+
+function isInMyPool(t) {
+  // Must be unassigned
+  if (t.assignedTo && t.assignedTo.trim()) return false;
+  // If we don't know the tech's dept, show all unassigned (so techs aren't blocked while mapping is being set up)
+  if (!SELECTED_DEPT) return true;
+  // Otherwise must match the tech's department (case-insensitive, trimmed)
+  return String(t.dept || '').trim().toUpperCase() === SELECTED_DEPT;
 }
 
 function renderBody() {
@@ -164,16 +178,13 @@ function renderBody() {
     body.innerHTML = mine.length === 0
       ? emptyState('🎯', 'No tickets assigned to you', 'Check the Pool tab to pick up new work')
       : '<div class="tkt-list">' + mine.map(function(t) { return renderRow(t, today); }).join('') + '</div>';
-  } else if (CURRENT_TAB === 'open') {
-    active.sort(byPriority);
-    body.innerHTML = active.length === 0
-      ? emptyState('✅', 'No active tickets', 'All caught up')
-      : '<div class="tkt-list">' + active.map(function(t) { return renderRow(t, today); }).join('') + '</div>';
   } else {
-    var pool = active.filter(function(t) { return !t.assignedTo || !t.assignedTo.trim(); });
+    // Pool tab — filtered to the tech's department
+    var pool = active.filter(isInMyPool);
     pool.sort(byPriority);
+    var deptName = SELECTED_DEPT || 'your department';
     body.innerHTML = pool.length === 0
-      ? emptyState('📥', 'Pool is empty', 'Every ticket has been picked up')
+      ? emptyState('📥', 'No tickets in ' + deptName, 'Nothing waiting in your department right now')
       : pool.map(function(t) { return renderCard(t, today); }).join('');
   }
 }
