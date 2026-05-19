@@ -5,7 +5,7 @@
 
 window.CSC_CONFIG = {
   // ⚠️  Replace with YOUR actual Cloudflare Worker URL (no trailing slash)
-  WORKER_URL: 'https://tech-work-board.enahabedian.workers.dev/',
+  WORKER_URL: 'https://tech-work-board.enahabedian.workers.dev',
 
   // App metadata
   APP_NAME: 'CSC Tech Work Board',
