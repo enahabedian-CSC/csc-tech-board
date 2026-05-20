@@ -12,8 +12,10 @@ html,body{height:100%;background:#0F1A2A;color:#E8EEF5;font-family:'Barlow Conde
   background:linear-gradient(180deg,#1B2A3C 0%,#15212F 100%);
   border-bottom:3px solid #FFD700;padding:14px 18px;
   display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:50;
-  box-shadow:0 2px 8px rgba(0,0,0,.4)
+  box-shadow:0 2px 8px rgba(0,0,0,.4);flex-wrap:wrap
 }
+.hdr > div:not(.hdr-logo):not(.hdr-tech){min-width:0;flex:1}
+.hdr-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .hdr-logo{
   width:42px;height:42px;background:#FFD700;border-radius:8px;
   display:flex;align-items:center;justify-content:center;
@@ -66,7 +68,10 @@ html,body{height:100%;background:#0F1A2A;color:#E8EEF5;font-family:'Barlow Conde
   display:flex;align-items:center;justify-content:center;
   font-size:22px;font-weight:800;margin:0 auto 10px
 }
-.tech-tile-name{font-size:17px;font-weight:600;color:#E8EEF5;line-height:1.15;letter-spacing:.5px}
+.tech-tile-name{
+  font-size:16px;font-weight:600;color:#E8EEF5;line-height:1.2;letter-spacing:.3px;
+  word-break:break-word;overflow-wrap:break-word;hyphens:auto
+}
 
 /* ─── TABS ─── */
 .tab-bar{
@@ -296,9 +301,23 @@ html,body{height:100%;background:#0F1A2A;color:#E8EEF5;font-family:'Barlow Conde
 
 .err-banner{background:#5A1A1A;color:#EF5350;padding:14px;border-radius:8px;margin-bottom:14px;font-size:14px;border:1px solid #C62828}
 
+/* Tablet+ — larger tiles */
 @media (min-width:768px){
-  .tech-grid{grid-template-columns:repeat(auto-fill,minmax(180px,1fr))}
+  .tech-grid{grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px}
+  .tech-tile{padding:18px 14px}
+  .tech-tile-name{font-size:17px;letter-spacing:.5px}
   .splash-title{font-size:40px}
   .tkt-card{padding:18px 22px}
   .tkt-equip{font-size:19px}
+}
+
+/* Small phones — tighter layout */
+@media (max-width:380px){
+  .tech-grid{grid-template-columns:repeat(2,1fr);gap:8px;padding:0 6px}
+  .tech-tile{padding:14px 8px}
+  .tech-tile-ini{width:46px;height:46px;font-size:18px;margin-bottom:8px}
+  .tech-tile-name{font-size:14px;line-height:1.15}
+  .splash-title{font-size:26px}
+  .splash-sub{font-size:14px;margin-bottom:22px}
+  .splash{padding:24px 10px}
 }
