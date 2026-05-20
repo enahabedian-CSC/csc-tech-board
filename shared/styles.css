@@ -50,14 +50,14 @@ html,body{height:100%;background:#0F1A2A;color:#E8EEF5;font-family:'Barlow Conde
 .splash-title{font-size:32px;font-weight:700;color:#FFD700;letter-spacing:2px;margin-bottom:8px}
 .splash-sub{font-size:16px;color:#88A;margin-bottom:30px;letter-spacing:1px}
 .tech-grid{
-  display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));
-  gap:12px;max-width:760px;margin:0 auto;padding:0 10px
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));
+  gap:10px;max-width:760px;margin:0 auto;padding:0 10px
 }
 .tech-tile{
   background:linear-gradient(180deg,#1B2A3C 0%,#15212F 100%);
-  border:2px solid #2A3E55;border-radius:12px;padding:18px 14px;
+  border:2px solid #2A3E55;border-radius:12px;padding:16px 10px;
   cursor:pointer;text-align:center;transition:all .15s;
-  font-family:inherit
+  font-family:inherit;overflow:hidden;min-width:0
 }
 .tech-tile:active{transform:scale(.96);border-color:#FFD700;background:rgba(255,215,0,.1)}
 .tech-tile-ini{
