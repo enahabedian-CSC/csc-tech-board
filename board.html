@@ -13,7 +13,6 @@
 
 <body>
 
-<!-- SPLASH (TECH PICKER) -->
 <div id="splashScreen">
   <div class="hdr">
     <div class="hdr-logo">⚡</div>
@@ -24,7 +23,22 @@
   </div>
   <div class="splash">
     <div class="splash-title">TAP YOUR NAME</div>
-    <div class="splash-sub">to see your tickets</div>
+    <div class="splash-sub">or type to search</div>
+
+    <div class="tech-search-wrap">
+      <input
+        type="text"
+        id="techSearch"
+        class="tech-search"
+        placeholder="🔍 Type to filter…"
+        autocomplete="off"
+        autocorrect="off"
+        autocapitalize="off"
+        spellcheck="false"
+        oninput="filterTechTiles()">
+      <button type="button" class="tech-search-clear" id="techSearchClear" onclick="clearTechSearch()" style="display:none">×</button>
+    </div>
+
     <div class="tech-grid" id="techGrid">
       <div class="loading">Loading technicians…</div>
     </div>
@@ -104,12 +118,39 @@ function showSplash() {
     return;
   }
   grid.innerHTML = TECH_LIST.sort().map(function(t) {
-    return '<button class="tech-tile" onclick="pickTech(\'' + escAttr(t) + '\')">' +
+    return '<button class="tech-tile" data-name="' + escAttr(t.toLowerCase()) + '" onclick="pickTech(\'' + escAttr(t) + '\')">' +
              '<div class="tech-tile-ini">' + escHtml(initials(t)) + '</div>' +
              '<div class="tech-tile-name">' + escHtml(t) + '</div>' +
            '</button>';
   }).join('');
+
+  // Reset filter on each splash render
+  var searchEl = document.getElementById('techSearch');
+  if (searchEl) { searchEl.value = ''; searchEl.focus(); }
+  var clearBtn = document.getElementById('techSearchClear');
+  if (clearBtn) clearBtn.style.display = 'none';
 }
+
+function filterTechTiles() {
+  var q = (document.getElementById('techSearch').value || '').trim().toLowerCase();
+  var clearBtn = document.getElementById('techSearchClear');
+  clearBtn.style.display = q ? 'flex' : 'none';
+
+  var tiles = document.querySelectorAll('.tech-tile');
+  tiles.forEach(function(tile) {
+    var name = tile.dataset.name || '';
+    // Match if the query appears anywhere in the name, OR matches initials
+    var matches = !q || name.indexOf(q) >= 0;
+    tile.classList.toggle('hidden', !matches);
+  });
+}
+
+function clearTechSearch() {
+  var searchEl = document.getElementById('techSearch');
+  searchEl.value = '';
+  searchEl.focus();
+  filterTechTiles();
+}  
 
 function pickTech(name) {
   SELECTED_TECH = name;
