@@ -31,12 +31,15 @@
   <div class="loading">Loading ticket…</div>
 </div>
 
-<div class="overlay" id="overlay">
+<div class="overlay" id="confirmOverlay">
   <div class="modal">
-    <div class="modal-ico" id="modalIco">✅</div>
-    <div class="modal-msg" id="modalMsg">Saved!</div>
-    <div class="modal-sub" id="modalSub"></div>
-    <button class="modal-btn" onclick="goBack()">BACK TO BOARD</button>
+    <div class="modal-ico">❓</div>
+    <div class="modal-msg" id="confirmMsg">Are you sure?</div>
+    <div class="modal-sub" id="confirmSub"></div>
+    <div style="display:flex;gap:10px;margin-top:6px">
+      <button class="modal-btn" id="confirmNo"  style="background:#2A3E55;color:#E8EEF5">CANCEL</button>
+      <button class="modal-btn" id="confirmYes" style="background:#FFD700;color:#0F1A2A">CONFIRM</button>
+    </div>
   </div>
 </div>
 
@@ -229,9 +232,8 @@ function goStep(target) {
     FORM_DATA.fixType          = document.getElementById('fixType').value;
     FORM_DATA.correctiveAction = document.getElementById('correctiveAction').value.trim();
     FORM_DATA.rootCause        = document.getElementById('rootCause').value.trim();
-    if (!FORM_DATA.correctiveAction) {
-      alert('Please describe the corrective action before continuing.');
-      document.getElementById('correctiveAction').focus();
+  if (!FORM_DATA.correctiveAction) {
+      alertDialog('Corrective action required', 'Please describe the corrective action before continuing.');
       return;
     }
     if (FORM_DATA.partsNeeded) FORM_DATA.partsStatus = document.getElementById('partsStatus').value;
@@ -245,14 +247,19 @@ function goStep(target) {
 }
 
 function cancelFlow() {
-  if (!confirm('Cancel and lose your progress?')) return;
-  STEP = 0;
-  FORM_DATA = { actualHours:'', fixType:'', correctiveAction:'', rootCause:'', workSummary:'',
-                tempFix:false, partsNeeded:false, partsStatus:'', notes:'' };
-  document.getElementById('progress').style.display = 'none';
-  renderInitial();
+  confirmDialog(
+    'Cancel and lose your progress?',
+    '',
+    function() {
+      STEP = 0;
+      FORM_DATA = { actualHours:'', fixType:'', correctiveAction:'', rootCause:'', workSummary:'',
+                    tempFix:false, partsNeeded:false, partsStatus:'', notes:'' };
+      document.getElementById('progress').style.display = 'none';
+      renderInitial();
+    }
+  );
 }
-
+  
 function toggleChk(id) {
   if (id === 'tempFix') FORM_DATA.tempFix = !FORM_DATA.tempFix;
   if (id === 'partsNeeded') FORM_DATA.partsNeeded = !FORM_DATA.partsNeeded;
@@ -263,25 +270,38 @@ function toggleChk(id) {
   renderStep();
 }
 
-async function doQuick(newStatus) {
-  if (!TECH) { alert('Tech name missing — go back and pick your name first.'); return; }
-  if (!confirm('Set this ticket to ' + newStatus + '?')) return;
+function doQuick(newStatus) {
+  if (!TECH) { alertDialog('Tech name missing', 'Go back and pick your name first.'); return; }
+  confirmDialog(
+    'Set this ticket to ' + newStatus + '?',
+    '',
+    function() { doSubmitQuick(newStatus); }
+  );
+}
+
+async function doSubmitQuick(newStatus) {
   showModal('⏳', 'UPDATING…', '');
   try {
-    const r = await CSC_API.quickStatus({ ticketNo: TICKET_NO, newStatus: newStatus, tech: TECH });
+    var r = await CSC_API.quickStatus({ ticketNo: TICKET_NO, newStatus: newStatus, tech: TECH });
     if (r.success) showModal('✅', 'STATUS UPDATED', 'Ticket is now ' + newStatus);
     else showModal('⚠️', 'ERROR', r.error);
   } catch(e) {
     showModal('⚠️', 'ERROR', e.message);
   }
 }
+function submitFinal() {
+  if (!TECH) { alertDialog('Tech name missing'); return; }
+  confirmDialog(
+    'Submit this ticket as COMPLETE?',
+    'Manager will verify before final close.',
+    function() { doSubmitFinal(); }
+  );
+}
 
-async function submitFinal() {
-  if (!TECH) { alert('Tech name missing.'); return; }
-  if (!confirm('Submit this ticket as COMPLETE?\n\nManager will verify before final close.')) return;
+async function doSubmitFinal() {
   showModal('⏳', 'SUBMITTING…', 'Saving to tracker');
   try {
-    const r = await CSC_API.completeTicket({
+    var r = await CSC_API.completeTicket({
       ticketNo: TICKET_NO,
       tech: TECH,
       newStatus: 'COMPLETE',
@@ -313,7 +333,36 @@ function showModal(ico, msg, sub) {
 function goBack() {
   window.location.href = 'board.html';
 }
+  
+function confirmDialog(msg, sub, onYes) {
+  document.getElementById('confirmMsg').textContent = msg;
+  document.getElementById('confirmSub').textContent = sub || '';
+  var overlay = document.getElementById('confirmOverlay');
+  overlay.classList.add('show');
 
+  var yesBtn = document.getElementById('confirmYes');
+  var noBtn  = document.getElementById('confirmNo');
+
+  // Clean up old handlers (replace nodes to clear all event listeners)
+  var yesClone = yesBtn.cloneNode(true);
+  var noClone  = noBtn.cloneNode(true);
+  yesBtn.parentNode.replaceChild(yesClone, yesBtn);
+  noBtn.parentNode.replaceChild(noClone, noBtn);
+
+  yesClone.onclick = function() {
+    overlay.classList.remove('show');
+    if (typeof onYes === 'function') onYes();
+  };
+  noClone.onclick = function() {
+    overlay.classList.remove('show');
+  };
+}
+
+function alertDialog(msg, sub) {
+  // Reuse the result modal as a simple alert
+  showModal('⚠️', msg, sub || '');
+}
+  
 function escHtml(v) {
   var d = document.createElement('span');
   d.textContent = String(v == null ? '' : v);
