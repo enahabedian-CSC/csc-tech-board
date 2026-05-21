@@ -31,6 +31,15 @@
   <div class="loading">Loading ticket…</div>
 </div>
 
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <div class="modal-ico" id="modalIco">✅</div>
+    <div class="modal-msg" id="modalMsg">Saved!</div>
+    <div class="modal-sub" id="modalSub"></div>
+    <button class="modal-btn" onclick="goBack()">BACK TO BOARD</button>
+  </div>
+</div>
+  
 <div class="overlay" id="confirmOverlay">
   <div class="modal">
     <div class="modal-ico">❓</div>
@@ -324,7 +333,7 @@ async function doSubmitFinal() {
 }
 
 function showModal(ico, msg, sub) {
-  document.getElementById('modalIco').textContent = ico;
+  document.getElementById('modalIco').textContent = ico;       // ← line 327
   document.getElementById('modalMsg').textContent = msg;
   document.getElementById('modalSub').textContent = sub || '';
   document.getElementById('overlay').classList.add('show');
