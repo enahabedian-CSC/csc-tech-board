@@ -336,13 +336,23 @@ html,body{height:100%;background:#0F1A2A;color:#E8EEF5;font-family:'Barlow Conde
   .tkt-equip{font-size:19px}
 }
 
-/* Small phones — tighter layout */
-@media (max-width:380px){
-  .tech-grid{grid-template-columns:repeat(2,1fr);gap:8px;padding:0 6px}
-  .tech-tile{padding:14px 8px}
+/* Phones — tighter layout for any iPhone width */
+@media (max-width:480px){
+  .tech-grid{grid-template-columns:repeat(2,1fr);gap:8px;padding:0 6px;max-width:100%}
+  .tech-tile{padding:14px 8px;min-width:0;max-width:100%}
   .tech-tile-ini{width:46px;height:46px;font-size:18px;margin-bottom:8px}
   .tech-tile-name{font-size:14px;line-height:1.15}
   .splash-title{font-size:26px}
   .splash-sub{font-size:14px;margin-bottom:22px}
   .splash{padding:24px 10px}
+  .tech-search-wrap{padding:0 6px;margin-bottom:16px}
+  .tech-search{padding:12px 38px 12px 14px;font-size:16px}
+  .tech-search-clear{right:14px;width:26px;height:26px;font-size:16px}
+
+  /* Header — keep things from pushing off the right edge */
+  .hdr{padding:12px 14px;gap:10px;flex-wrap:wrap}
+  .hdr-title{font-size:17px}
+  .hdr-sub{font-size:11px}
+  .tech-chip{padding:6px 10px;font-size:12px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .btn-switch{padding:5px 9px;font-size:11px}
 }
