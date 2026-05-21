@@ -333,26 +333,64 @@ async function doSubmitFinal() {
 }
 
 function showModal(ico, msg, sub) {
-  document.getElementById('modalIco').textContent = ico;       // ← line 327
-  document.getElementById('modalMsg').textContent = msg;
-  document.getElementById('modalSub').textContent = sub || '';
-  document.getElementById('overlay').classList.add('show');
+  // Defensive: if the modal HTML is missing, inject it
+  var overlay = document.getElementById('overlay');
+  if (!overlay) {
+    var div = document.createElement('div');
+    div.className = 'overlay';
+    div.id = 'overlay';
+    div.innerHTML =
+      '<div class="modal">' +
+        '<div class="modal-ico" id="modalIco">✅</div>' +
+        '<div class="modal-msg" id="modalMsg">Saved!</div>' +
+        '<div class="modal-sub" id="modalSub"></div>' +
+        '<button class="modal-btn" onclick="goBack()">BACK TO BOARD</button>' +
+      '</div>';
+    document.body.appendChild(div);
+    overlay = div;
+  }
+  var icoEl = document.getElementById('modalIco');
+  var msgEl = document.getElementById('modalMsg');
+  var subEl = document.getElementById('modalSub');
+  if (icoEl) icoEl.textContent = ico;
+  if (msgEl) msgEl.textContent = msg;
+  if (subEl) subEl.textContent = sub || '';
+  overlay.classList.add('show');
 }
-
+  
 function goBack() {
   window.location.href = 'board.html';
 }
   
 function confirmDialog(msg, sub, onYes) {
-  document.getElementById('confirmMsg').textContent = msg;
-  document.getElementById('confirmSub').textContent = sub || '';
   var overlay = document.getElementById('confirmOverlay');
+  if (!overlay) {
+    var div = document.createElement('div');
+    div.className = 'overlay';
+    div.id = 'confirmOverlay';
+    div.innerHTML =
+      '<div class="modal">' +
+        '<div class="modal-ico">❓</div>' +
+        '<div class="modal-msg" id="confirmMsg">Are you sure?</div>' +
+        '<div class="modal-sub" id="confirmSub"></div>' +
+        '<div style="display:flex;gap:10px;margin-top:6px">' +
+          '<button class="modal-btn" id="confirmNo"  style="background:#2A3E55;color:#E8EEF5">CANCEL</button>' +
+          '<button class="modal-btn" id="confirmYes" style="background:#FFD700;color:#0F1A2A">CONFIRM</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(div);
+    overlay = div;
+  }
+  var msgEl = document.getElementById('confirmMsg');
+  var subEl = document.getElementById('confirmSub');
+  if (msgEl) msgEl.textContent = msg;
+  if (subEl) subEl.textContent = sub || '';
   overlay.classList.add('show');
 
   var yesBtn = document.getElementById('confirmYes');
   var noBtn  = document.getElementById('confirmNo');
+  if (!yesBtn || !noBtn) return;
 
-  // Clean up old handlers (replace nodes to clear all event listeners)
   var yesClone = yesBtn.cloneNode(true);
   var noClone  = noBtn.cloneNode(true);
   yesBtn.parentNode.replaceChild(yesClone, yesBtn);
