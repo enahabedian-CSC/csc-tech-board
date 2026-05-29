@@ -231,10 +231,24 @@ function renderBody() {
   }
 }
 
+async function pickUpTicket(ticketNo) {
+  try {
+    var r = await CSC_API.assignTicket({ ticketNo: ticketNo, tech: SELECTED_TECH });
+    if (r.success) {
+      await loadData();
+      switchTab('mine');
+    } else {
+      alert('Could not pick up ticket: ' + (r.error || 'Unknown error'));
+    }
+  } catch(e) {
+    alert('Error: ' + e.message);
+  }
+}
+
 function renderCard(t, today) {
   var p = (t.priority || 'MEDIUM').toLowerCase();
   var age = ageInfo(t.dateOpened, today);
-  return '<div class="tkt-card p-' + p + '" onclick="openUpdate(\'' + escAttr(t.ticketNo) + '\')">' +
+  return '<div class="tkt-card p-' + p + '" onclick="pickUpTicket(\'' + escAttr(t.ticketNo) + '\')">' +
     '<div class="tkt-top">' +
       '<div><span class="tkt-pri p-' + p + '">' + escHtml(t.priority || '—') + '</span><span class="tkt-no">' + escHtml(t.ticketNo || '—') + '</span></div>' +
       '<div class="tkt-age ' + age.cls + '">' + age.text + '</div>' +
